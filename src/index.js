@@ -3,8 +3,20 @@ import dns from "dns";
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 import dotenv from "dotenv";
 import connectDB from "./db/index.js"
+import { error } from "console";
 dotenv.config({
     path: './env'
+})
+
+.then(()=>{
+    app.on("error",(error) =>{
+        console.log("ERR coming",error)
+    })
+    app.listen(process.env.PORT)
+    console.log(`App is runnig at port${process.env.PORT}`)
+})
+.catch((err)=>{
+    console.log("Mongodb connection failed",err)
 })
 
 connectDB()
