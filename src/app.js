@@ -16,3 +16,10 @@ app.use(cookieParser())
 
 
 export default app
+
+
+// routes import
+import userRouter from "./routes/user.routes.js"
+
+// routes declaration 
+app.use("/api/v1/user", userRouter)  // iska mtlb hai ki pehle /api/v1/user par jab clicl hoga fir router call hoga uske baad waha roter mai /register par jana hoga /api/v1/user/register

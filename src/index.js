@@ -4,10 +4,11 @@ dns.setServers(["8.8.8.8", "1.1.1.1"]);
 import dotenv from "dotenv";
 import connectDB from "./db/index.js"
 import { error } from "console";
+import app from "./app.js";
 dotenv.config({
-    path: './env'
+    path:'./env'
 })
-
+connectDB()
 .then(()=>{
     app.on("error",(error) =>{
         console.log("ERR coming",error)
@@ -18,9 +19,6 @@ dotenv.config({
 .catch((err)=>{
     console.log("Mongodb connection failed",err)
 })
-
-connectDB()
-
 
 
 
