@@ -1,4 +1,4 @@
-import { v2 } from "cloudinary";
+import { v2 as cloudinary} from "cloudinary";
 import fs from "fs" // fs is file system it is used to do file operation like read write and many more
 
 cloudinary.config(

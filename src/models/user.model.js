@@ -10,7 +10,7 @@ const userSchmea = new Schema(
             unique: true,
             lowercase: true,
             trim: true,
-            idex: true
+            index: true
         },
 
         email : {
@@ -61,10 +61,9 @@ const userSchmea = new Schema(
     }
 )
 
-userSchmea.pre( "save" , async function (next) {   // save ek event hai mtlb save krne se pehle yeh function chal do pre ka yeh kaam hota hai
+userSchmea.pre( "save" , async function () {   // save ek event hai mtlb save krne se pehle yeh function chal do pre ka yeh kaam hota hai
     if(!this.isModified("password")) return next ()  
-    this.password = bycrypt.hash(this.password , 10) // yeh number bss rounds bta rha
-    next() 
+    this.password = await bycrypt.hash(this.password , 10) // yeh number bss rounds bta rha
 }) 
 
 userSchmea.methods.isPasswordCorrect = async function 
