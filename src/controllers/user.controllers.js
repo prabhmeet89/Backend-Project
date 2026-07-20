@@ -4,6 +4,23 @@ import { User } from "../models/user.model.js";
 import {uploadOnCloudinary} from "../utils/Cloudinary.js"
 import { ApiResponse } from "../utils/Apiresponse.js";
 
+const generateAccessAndRefereshTokens = async(userId) =>{
+    try {
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave: false })
+
+        return {accessToken, refreshToken}
+
+
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while generating referesh and access token")
+    }
+}
+
 const userRegister = asyncHandler(async (req ,res) => {
     // get user details from frontend  // yeh saare steps hai kaise user register hoga
     // validation - not empty
@@ -73,4 +90,85 @@ const userRegister = asyncHandler(async (req ,res) => {
 
 })
 
-export {userRegister}
+const loginUser = asyncHandler(async (req,res) => {
+// steps 
+// request body
+// email or username jisse login krwana hai
+// find user hai ki ni iss username email se
+// fir password check agr galt hai to msg bhej do wrong , agr sahi hai to
+// access token and refresh token bhej do
+// or yeh hum secure cooies mai bhejenge
+
+const {email,username,password} = req.body
+
+if (!username || !email) {  // checking if user provide email or username
+    throw new ApiError(400 , "email or username is required")
+}
+
+const user = await User.findOne({  //or yeh find one jaise he pehli value jo match milti return kar deta hao
+    $or : [{username},{email}]  // isk mtlb yeh ki ya to email mil jaye ya username mil jaye to return krdo true or false
+})
+
+if (!user) {
+    throw new ApiError(404 , "user does not exist")
+}
+
+const isValidPass = await user.isPasswordCorrect(password)
+
+if (!isValidPass) {
+    throw new ApiError(404 , "password in valid")
+}
+
+const {accessToken,refreshToken} = await generateAccessAndRefereshTokens(user._id)
+
+const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+const options = {  // yeh cookies ke liye hai
+        httpOnly: true, // jab hum yeh true kar dete hai to bss server se yeh modified ho skti hai frontend se ni
+        secure: true
+    }
+
+return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(  // yeh data dera hai
+        new ApiResponse(
+            200, 
+            {
+                user: loggedInUser, accessToken, refreshToken
+            },
+            "User logged In Successfully"
+        )
+    )    
+
+
+})
+
+const logoutUser = asyncHandler(async (req,res) => {
+    await User.findByIdAndUpdate(  // yehid find bhi find kar leta hai or fir update bhi kar deta hai
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined // this removes the field from document
+            }
+        },
+        {
+            new: true
+        }
+    )
+
+    const options = {  // cookie delete krne ke liye
+        httpOnly: true,
+        secure: true
+    }
+
+    return res
+    .status(200)
+    .clearCookie("accessToken", options)  // method hai
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "User logged Out"))
+
+})
+
+export {userRegister , loginUser,logoutUser}
