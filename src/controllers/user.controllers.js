@@ -3,12 +3,12 @@ import {ApiError} from "../utils/ApiError.js"
 import { User } from "../models/user.model.js";
 import {uploadOnCloudinary} from "../utils/Cloudinary.js"
 import { ApiResponse } from "../utils/Apiresponse.js";
-
+import jwt from "jsonwebtoken";
 const generateAccessAndRefereshTokens = async(userId) =>{
     try {
         const user = await User.findById(userId)
-        const accessToken = user.generateAccessToken()
-        const refreshToken = user.generateRefreshToken()
+        const accessToken = await user.generateAccessToken()
+        const refreshToken = await user.generateRefreshToken()
 
         user.refreshToken = refreshToken
         await user.save({ validateBeforeSave: false })
@@ -17,6 +17,7 @@ const generateAccessAndRefereshTokens = async(userId) =>{
 
 
     } catch (error) {
+        console.log("Real error",error)
         throw new ApiError(500, "Something went wrong while generating referesh and access token")
     }
 }
@@ -101,7 +102,7 @@ const loginUser = asyncHandler(async (req,res) => {
 
 const {email,username,password} = req.body
 
-if (!username || !email) {  // checking if user provide email or username
+if (!(username || email)) {  // checking if user provide email or username
     throw new ApiError(400 , "email or username is required")
 }
 
@@ -171,4 +172,46 @@ const logoutUser = asyncHandler(async (req,res) => {
 
 })
 
-export {userRegister , loginUser,logoutUser}
+const refreshAcessToken = asyncHandler(async (req,res) => {
+    const IncomingRefreshtoken = req.cookie.refreshToken || req.body.refreshToken // yeh body wala agr koi appp se try kar rha ho uske liye
+    if (!IncomingRefreshtoken) {
+     throw ApiError(401, "Unothourised Request")
+    }
+
+const decodedToken = jwt.verify(
+    IncomingRefreshtoken,
+    process.env.REFRESH_TOKEN_SECRET
+) 
+
+const user = await User.findById(decodedToken?._id)  // yeh last mai ek wrapper likha hai ki decoded wale se id store krdo user mai
+
+if (!user) {
+    throw ApiError(401 , "Invalid token")
+}
+
+if (IncomingRefreshtoken !== user?.refreshToken) {  // yeh check karne ke liye ki incomig token or jo token pehle se hai same hai ki ni agr same ni hai error show krdo
+    throw ApiError(401 , "Refresh Token is expired or used")
+}
+
+const option = {  // yeh cookie ke liye
+    httpOnly : true,
+    secure : true
+}
+
+const {accessToken, newrefreshToken} = await generateAccessAndRefereshTokens()
+
+return res 
+.status(200)
+.cookie("accessToken" , accessToken , option)
+.cookie("refreshToken" , newrefreshToken , option)
+.json(
+    new ApiResponse(
+    200,
+    {accessToken,
+    refreshToken : newrefreshToken},
+    "Access Token Refresh"
+    ) 
+)
+})
+
+export {userRegister , loginUser,logoutUser,refreshAcessToken}

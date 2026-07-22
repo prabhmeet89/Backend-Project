@@ -62,7 +62,7 @@ const userSchmea = new Schema(
 )
 
 userSchmea.pre( "save" , async function () {   // save ek event hai mtlb save krne se pehle yeh function chal do pre ka yeh kaam hota hai
-    if(!this.isModified("password")) return next ()  
+    if(!this.isModified("password")) return 
     this.password = await bycrypt.hash(this.password , 10) // yeh number bss rounds bta rha
 }) 
 
