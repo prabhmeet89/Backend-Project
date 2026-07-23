@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import {uploadOnCloudinary , deleteFromCloudinary} from "../utils/Cloudinary.js"
 import { ApiResponse } from "../utils/Apiresponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 const generateAccessAndRefereshTokens = async(userId) =>{
     try {
         const user = await User.findById(userId)
@@ -425,6 +426,55 @@ const GetUserProfileChannel = asyncHandler(async(req , res) => {
     )
 })
 
+const getWatchHistory = asyncHandler(async(req,res) => {
+    const user = await User.aggregate([
+        {
+          $match: {
+            _id: new mongoose.Types.ObjectId(req.user._id)  // yeh humne isiliye kiya hai kyu ki aggretgate pipelines directly passs hoti hai hai agr hum sirf req.user.id likhe to string pass hoti hai na object id mongodb ki to usse id mai convert krne ke liye yeh likha hai
+           }
+        },
+
+        {
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        fullname: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ] 
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user[0].watchHistory,
+            "Watch history fetched successfully"
+        )
+    )
+
+})
+
 export {
     userRegister , 
     loginUser,
@@ -435,5 +485,6 @@ export {
     updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
-    GetUserProfileChannel
+    GetUserProfileChannel,
+    getWatchHistory
 }
